@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Shynidex</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    text-align: center;
+}
+#pokedex {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.pokemon {
+    background: white;
+    border-radius: 12px;
+    width: 180px;
+    margin: 10px;
+    padding: 10px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.2);
+}
+.pokemon img {
+    width: 120px;
+    cursor: pointer;
+}
+button {
+    width: 100%;
+    margin-top: 5px;
+}
+.forms {
+    margin-top: 8px;
+}
+.forms img {
+    width: 70px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>✨ Shynidex – Pokédex complet ✨</h1>
+<div id="pokedex"></div>
+
+<script>
+const TOTAL_POKEMON = 1025;
+const pokedex = document.getElementById("pokedex");
+
+// Chargement DANS L’ORDRE
+async function loadPokedex() {
+    for (let id = 1; id <= TOTAL_POKEMON; id++) {
+        await loadPokemon(id);
+    }
+}
+
+async function loadPokemon(id) {
+    try {
+        const resPoke = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+        const poke = await resPoke.json();
+
+        const resSpecies = await fetch(poke.species.url);
+        const species = await resSpecies.json();
+
+        const nameFR = species.names.find(n => n.language.name === "fr").name;
+
+        const card = document.createElement("div");
+        card.className = "pokemon";
+        card.id = "poke-" + id;
+
+        card.innerHTML = `
+            <h3>#${id} ${nameFR}</h3>
+            <img 
+              src="${poke.sprites.front_default}" 
+              onclick="toggleShiny(this, '${poke.sprites.front_default}', '${poke.sprites.front_shiny}')">
+            <button onclick="showStats(${id})">📊 Stats</button>
+            <button onclick="showForms(${id})">🧬 Formes</button>
+            <div class="forms" id="forms-${id}"></div>
+        `;
+
+        pokedex.appendChild(card);
+
+    } catch (e) {
+        console.log("Erreur Pokémon", id);
+    }
+}
+
+// NORMAL ⇄ SHINY
+function toggleShiny(img, normal, shiny) {
+    img.src = img.src.includes("shiny") ? normal : shiny;
+}
+
+// STATS
+async function showStats(id) {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    const p = await res.json();
+
+    let txt = "Stats :\n\n";
+    p.stats.forEach(s => {
+        txt += `${s.stat.name} : ${s.base_stat}\n`;
+    });
+
+    alert(txt);
+}
+
+// FORMES (affichées sous le Pokémon)
+async function showForms(id) {
+    const container = document.getElementById("forms-" + id);
+
+    if (container.innerHTML !== "") {
+        container.innerHTML = "";
+        return;
+    }
+
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
+    const species = await res.json();
+
+    for (let v of species.varieties) {
+        const resForm = await fetch(v.pokemon.url);
+        const form = await resForm.json();
+
+        if (form.sprites.front_default) {
+            const img = document.createElement("img");
+            img.src = form.sprites.front_default;
+            container.appendChild(img);
+        }
+    }
+}
+
+// LANCEMENT
+loadPokedex();
+</script>
+
+</body>
+</html>
+
+
+
